@@ -2,12 +2,14 @@
 <presence />
 
 //for query roster
-C:  <iq type="get">
-        <query xmlns="jabber:iq:roster" />
-    </iq>
+C:  
+<iq type="get">
+    <query xmlns="jabber:iq:roster" />
+</iq>
     
-S:  <iq type="result" to="echobot@example.com" from="example.com">
+S:  
+<iq type="result" to="echobot@example.com" from="example.com">
     <query xmlns="jabber:iq:roster">
-    <item jid="friend@example.com" subscription="both" />
+        <item jid="friend@example.com" subscription="both" />
     </query>
 </iq>
