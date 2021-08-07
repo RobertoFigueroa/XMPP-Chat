@@ -14,6 +14,7 @@ class EchoBot(slixmpp.ClientXMPP):
         self.add_event_handler('message', self.message)
 
 
+
     # if xmpp.connect():
     #     xmpp.process(block=True)
     # else:
@@ -28,7 +29,8 @@ class EchoBot(slixmpp.ClientXMPP):
 
     def message(self, msg):
         if msg['type'] in ('normal', 'chat'):
-            msg.reply("Enviaste:\n%s" % msg['body']).send()
+            print(">>", msg['body'])
+            #msg.reply("Enviaste:\n%s" % msg['body']).send()
             #algo we can use send_message
             #self.send_message(mto=msg['from'],
             #                        mbody="Thanks for sending:\n%s" % msg['body'])
@@ -60,8 +62,7 @@ if __name__ == "__main__":
 
     # ***
     # service discovery and ping
-    # ***
-
+    # ***z
     xmpp = EchoBot(opts.jid, opts.password)
     xmpp.register_plugin('xep_0030') # Service Discovery
     xmpp.register_plugin('xep_0199') # Ping
