@@ -1,35 +1,42 @@
 import asyncio
 from echo_bot import EchoBot
 import logging
+import getpass
+
 
 def _main(account):
 
     account.connect()
     account.process()
 
-print("Welcome to Chat-UVG")
 print("*"*20)
-print("1.Authenticate\n2.Register\n3.Salir\n")
-opt = int(input(">>> "))
-
+print("Welcome to Network-Chat-UVG")
+print("*"*20)
+print("Authentication")
+print("-"*20)
+print("1.Log in\n2.Create account\nAny for exit")
+opt = int(input("Choose an option\n>>>"))
+if opt < 3 and opt > 0:
+    jid = input("Enter username: ")
+    password = getpass.getpass("Password: ")
+    jid += '@alumchat.xyz'
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(levelname)-8s %(message)s')
 #handling authentication
 if opt == 1:
     try:
-        ac = EchoBot("reg1@alumchat.xyz", "12345")
-        ac.register_plugin('xep_0030') # Service Discovery
-        ac.register_plugin('xep_0004') # Data forms
-        ac.register_plugin('xep_0066') # Out-of-band Data
-        ac.register_plugin('xep_0077') # In-band Registration        
-        asyncio.run(_main(ac))
+        xmpp = EchoBot(jid, password)
+        asyncio.run(_main(xmpp))
 
     except KeyboardInterrupt:
-        print("Adios")
-
-
+        print("Bye")
 #handling registration
 elif opt == 2:
-    pass
+    try:
+        xmpp = EchoBot(jid, password, is_new=True)
+        asyncio.run(_main(xmpp))
+    except KeyboardInterrupt:
+        print("Bye")
 
-#exit
-else: 
-    pass
+else:
+    print("Chao!")

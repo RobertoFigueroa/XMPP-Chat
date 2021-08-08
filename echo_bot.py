@@ -5,15 +5,40 @@ import getpass
 from optparse import OptionParser
 
 import slixmpp
+from slixmpp.exceptions import IqError, IqTimeout
 
 class EchoBot(slixmpp.ClientXMPP):
-    def __init__(self, jid, password):
+    def __init__(self, jid, password, is_new=False):
         super().__init__(jid, password)
 
         self.add_event_handler('session_start', self.start)
         self.add_event_handler('message', self.message)
+        self.add_event_handler('register', self.register)
+        
+        self.register_plugin('xep_0030') # Service Discovery
+        self.register_plugin('xep_0199') # Ping
+        if is_new:
+            self.register_plugin('xep_0004') # Data forms
+            self.register_plugin('xep_0066') # Out-of-band Data
+            self.register_plugin('xep_0077') # In-band Registration        
+            self['xep_0077'].force_registration = True
 
+    async def register(self, iq):
+        resp = self.Iq()
+        resp['type'] = 'set'
+        resp['register']['username'] = self.boundjid.user
+        resp['register']['password'] = self.password
 
+        try:
+            await resp.send()
+            logging.info("Account created for %s!" % self.boundjid)
+        except IqError as e:
+            logging.error("Could not register account: %s" %
+                    e.iq['error']['text'])
+            self.disconnect()
+        except IqTimeout:
+            logging.error("No response from server.")
+            self.disconnect()
 
     # if xmpp.connect():
     #     xmpp.process(block=True)
