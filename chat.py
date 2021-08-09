@@ -1,42 +1,46 @@
 import asyncio
+
+from slixmpp.exceptions import XMPPError
 from echo_bot import EchoBot
 import logging
 import getpass
 
+from concurrent.futures import ThreadPoolExecutor
 
-def _main(account):
 
-    account.connect()
-    account.process()
+async def ainput(prompt: str = ''):
+    with ThreadPoolExecutor(1, 'ainput') as executor:
+        return (await asyncio.get_event_loop().run_in_executor(executor, input, prompt)).rstrip()
 
-print("*"*20)
-print("Welcome to Network-Chat-UVG")
-print("*"*20)
-print("Authentication")
-print("-"*20)
-print("1.Log in\n2.Create account\nAny for exit")
-opt = int(input("Choose an option\n>>>"))
-if opt < 3 and opt > 0:
-    jid = input("Enter username: ")
-    password = getpass.getpass("Password: ")
-    jid += '@alumchat.xyz'
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(levelname)-8s %(message)s')
-#handling authentication
-if opt == 1:
-    try:
+def _main(a):
+    a.connect()
+    a.process(forever=False)
+
+async def main():
+
+    print("*"*20)
+    print("Welcome to Network-Chat-UVG")
+    print("*"*20)
+    print("Authentication")
+    print("-"*20)
+    print("1.Log in\n2.Create account\nAny for exit")
+    opt = int(input("Choose an option\n>>>"))
+    if opt < 3 and opt > 0:
+        jid = input("Enter username: ")
+        password = getpass.getpass("Password: ")
+        jid += '@alumchat.xyz'
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(levelname)-8s %(message)s')
+    #handling authentication
+    xmpp = None
+    if opt == 1:
         xmpp = EchoBot(jid, password)
-        asyncio.run(_main(xmpp))
+        await asyncio.gather(
+            _main(xmpp),
+            ainput()
+        )
 
-    except KeyboardInterrupt:
-        print("Bye")
-#handling registration
-elif opt == 2:
-    try:
-        xmpp = EchoBot(jid, password, is_new=True)
-        asyncio.run(_main(xmpp))
-    except KeyboardInterrupt:
-        print("Bye")
+    else:
+        exit(0)
 
-else:
-    print("Chao!")
+asyncio.run(main())

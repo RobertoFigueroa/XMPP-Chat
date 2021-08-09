@@ -3,6 +3,8 @@ import asyncio
 import logging
 import getpass
 from optparse import OptionParser
+import threading
+from aioconsole import aprint
 
 import slixmpp
 from slixmpp.exceptions import IqError, IqTimeout
@@ -11,17 +13,35 @@ class EchoBot(slixmpp.ClientXMPP):
     def __init__(self, jid, password, is_new=False):
         super().__init__(jid, password)
 
+        self.im = None
+
+        self.connected_event = asyncio.Event()
+        
         self.add_event_handler('session_start', self.start)
         self.add_event_handler('message', self.message)
         self.add_event_handler('register', self.register)
         
         self.register_plugin('xep_0030') # Service Discovery
+        self.register_plugin('xep_0004') # Data Forms
+        self.register_plugin('xep_0060') # PubSub
         self.register_plugin('xep_0199') # Ping
         if is_new:
             self.register_plugin('xep_0004') # Data forms
             self.register_plugin('xep_0066') # Out-of-band Data
             self.register_plugin('xep_0077') # In-band Registration        
             self['xep_0077'].force_registration = True
+
+    async def chat_to(self, to, msg):
+        self.send_message(mto=to, mbody=msg, mtype='chat', mfrom=self.boundjid)
+        await asyncio.sleep(1)
+    def log_out(self):
+        self.disconnect(reason='Log out')
+
+    def set_im(self, jid):
+        self.im = jid
+    
+    def clear_im(self, jid):
+        self.im = None
 
     async def register(self, iq):
         resp = self.Iq()
@@ -40,6 +60,7 @@ class EchoBot(slixmpp.ClientXMPP):
             logging.error("No response from server.")
             self.disconnect()
 
+        
     # if xmpp.connect():
     #     xmpp.process(block=True)
     # else:
@@ -49,12 +70,14 @@ class EchoBot(slixmpp.ClientXMPP):
         try:
             self.send_presence(pstatus="Prueba el ecoooo") #<presence />
             await self.get_roster() #IQ stanza for retrieve, response is saved by internal handler (self.roster)
+            self.connected_event.set()
         except:
             print("An error has ocurred")
 
-    def message(self, msg):
+    async def message(self, msg):
         if msg['type'] in ('normal', 'chat'):
-            print(">>", msg['body'])
+            #if msg['from'] == self.im:
+            await aprint("\n{}".format(msg['body']))
             #msg.reply("Enviaste:\n%s" % msg['body']).send()
             #algo we can use send_message
             #self.send_message(mto=msg['from'],
