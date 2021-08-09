@@ -9,7 +9,7 @@ from aioconsole import aprint
 import slixmpp
 from slixmpp.exceptions import IqError, IqTimeout
 
-class EchoBot(slixmpp.ClientXMPP):
+class Client(slixmpp.ClientXMPP):
     def __init__(self, jid, password, is_new=False):
         super().__init__(jid, password)
 

@@ -1,46 +1,43 @@
 import asyncio
-
-from slixmpp.exceptions import XMPPError
-from echo_bot import EchoBot
 import logging
 import getpass
 
-from concurrent.futures import ThreadPoolExecutor
+from slixmpp import clientxmpp
+
+from client import Client
+from aioconsole import ainput
 
 
-async def ainput(prompt: str = ''):
-    with ThreadPoolExecutor(1, 'ainput') as executor:
-        return (await asyncio.get_event_loop().run_in_executor(executor, input, prompt)).rstrip()
-
-def _main(a):
-    a.connect()
-    a.process(forever=False)
-
-async def main():
-
-    print("*"*20)
-    print("Welcome to Network-Chat-UVG")
-    print("*"*20)
-    print("Authentication")
+async def main(client : EchoBot):
     print("-"*20)
-    print("1.Log in\n2.Create account\nAny for exit")
-    opt = int(input("Choose an option\n>>>"))
-    if opt < 3 and opt > 0:
-        jid = input("Enter username: ")
-        password = getpass.getpass("Password: ")
-        jid += '@alumchat.xyz'
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(levelname)-8s %(message)s')
-    #handling authentication
-    xmpp = None
+    print("1.Chat 1-2-1\n2.Other stuff\nAny number for exit")
+    opt = int(input("Choose an option\n->"))
     if opt == 1:
-        xmpp = EchoBot(jid, password)
-        await asyncio.gather(
-            _main(xmpp),
-            ainput()
-        )
+        name = await ainput("Write JID\n-> ")
+        client.set_im(name)
+        is_session_active = True
+        while is_session_active:
+            msg = await ainput("-->")
+            if msg != '\q' and len(msg)>0:
+                client.send_message(
+                    mto=name,
+                    mbody=msg,
+                    mtype='chat'
+                )
+            else:
+                is_session_active = False
 
-    else:
-        exit(0)
-
-asyncio.run(main())
+if __name__ == "__main__":
+    try:
+        #TODO: manage input for registration or authentication
+        client = EchoBot("reg1@alumchat.xyz", "12345")
+        client.connect()
+        client.loop.run_until_complete(client.connected_event.wait())
+        print("Conectando ....")
+        client.loop.create_task(main(client))
+        client.process()
+        #loop = asyncio.get_running_loop()
+    except Exception as e:
+        print("Error:", e)
+    finally:
+        client.disconnect()
