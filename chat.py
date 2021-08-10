@@ -49,9 +49,24 @@ async def main(client : Client):
         elif opt == 4:
             pass
         elif opt == 5:
-            pass
+            room = await ainput("Write room name\n-->")
+            client.room = room
+            client.join_room()
+            room_session = True
+            while room_session:
+                msg = await ainput("-->")
+                if msg != '\q' and len(msg) > 0:
+                    client.send_message(
+                        mto=client.room,
+                        mbody=msg,
+                        mtype='groupchat',
+                        mfrom=client.boundjid
+                    )
+                else:
+                    room_session = False
         elif opt == 6:
-            pass
+            status = await ainput("Write your presence\n-->")
+            client.send_presence(pstatus=status)
         elif opt == 7:
             pass
         elif opt == 8:

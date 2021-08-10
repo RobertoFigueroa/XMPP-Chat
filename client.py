@@ -10,14 +10,15 @@ from aioconsole import aprint
 import slixmpp
 from slixmpp.exceptions import IqError, IqTimeout
 import xml.etree.ElementTree as ET
-
 class Client(slixmpp.ClientXMPP):
     def __init__(self, jid, password, is_new=False):
         super().__init__(jid, password)
 
         self.im = None
+        self.nick = jid.split('@')[0]
+        self.room = None
         
-        self.recieved = set()
+        self.received = set()
         
         self.connected_event = asyncio.Event()
         self.presences_received = asyncio.Event()
@@ -25,9 +26,14 @@ class Client(slixmpp.ClientXMPP):
         self.add_event_handler('session_start', self.start)
         self.add_event_handler('message', self.message)
         self.add_event_handler('register', self.register)
-        self.add_event_handler("changed_status", self.wait_for_presences)
-        
+        self.add_event_handler('changed_status', self.wait_for_presences)
+        self.add_event_handler("groupchat_message", self.muc_message)
+        self.add_event_handler("muc::%s::got_online" % self.room,
+                               self.muc_online)
+
+
         self.register_plugin('xep_0030') # Service Discovery
+        self.register_plugin('xep_0045') # Multi-User Chat
         self.register_plugin('xep_0004') # Data Forms
         self.register_plugin('xep_0060') # PubSub
         self.register_plugin('xep_0199') # Ping
@@ -94,7 +100,6 @@ class Client(slixmpp.ClientXMPP):
         # resp['query']['xmlns'] = 'jabber:iq:roster'
         # resp['query'][''] 
         
-
     async def register(self, iq):
         resp = self.Iq()
         resp['type'] = 'set'
@@ -112,12 +117,6 @@ class Client(slixmpp.ClientXMPP):
             logging.error("No response from server.")
             self.disconnect()
 
-        
-    # if xmpp.connect():
-    #     xmpp.process(block=True)
-    # else:
-    #     print('Unable to connect')
-    #method for broadcast presence and retrieve roster when start session
     async def start(self, event):
         try:
             self.send_presence(pstatus="hola khe aze") #<presence />
@@ -146,6 +145,50 @@ class Client(slixmpp.ClientXMPP):
                 self.presences_received.set()
             else:
                 self.presences_received.clear()
+
+    async def muc_message(self, msg):
+        """
+        Process incoming message stanzas from any chat room. Be aware
+        that if you also have any handlers for the 'message' event,
+        message stanzas may be processed by both handlers, so check
+        the 'type' attribute when using a 'message' event handler.
+        Whenever the bot's nickname is mentioned, respond to
+        the message.
+        IMPORTANT: Always check that a message is not from yourself,
+                   otherwise you will create an infinite loop responding
+                   to your own messages.
+        This handler will reply to messages that mention
+        the bot's nickname.
+        Arguments:
+            msg -- The received message stanza. See the documentation
+                   for stanza objects and the Message stanza to see
+                   how it may be used.
+        """
+        if msg['mucnick'] != self.nick:
+            if msg['type'] in ('groupchat', ):
+                await aprint("\n{}".format(msg['body']))
+
+    def muc_online(self, presence):
+        """
+        Process a presence stanza from a chat room. In this case,
+        presences from users that have just come online are
+        handled by sending a welcome message that includes
+        the user's nickname and role in the room.
+        Arguments:
+            presence -- The received presence stanza. See the
+                        documentation for the Presence stanza
+                        to see how else it may be used.
+        """
+        if presence['muc']['nick'] != self.nick:
+            pass
+            # self.send_message(mto=presence['from'].bare,
+            #                   mbody="Hello, %s %s" % (presence['muc']['role'],
+            #                                           presence['muc']['nick']),
+            #                   mtype='groupchat')
+
+    def join_room(self):
+        self.plugin['xep_0045'].join_muc(self.room,
+                                         self.nick)
 
 if __name__ == "__main__":
     optp = OptionParser()
