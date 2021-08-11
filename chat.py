@@ -1,19 +1,22 @@
 import asyncio
 import logging
 import getpass
-from ssl import PEM_cert_to_DER_cert
+import time
 
 from slixmpp import clientxmpp
 
 from client import Client
 from aioconsole import ainput
+import xml.etree.ElementTree as ET
 
+msg = ''
 
 async def main(client : Client):
+    global msg
     is_connected = True
     while is_connected:
         print("-"*20) #TODO: consider save this message on a conf. file
-        print("\t1.Chat 1-2-1\n \
+        print("\t\t1.Chat 1-2-1\n \
             2.Show roster\n \
             3.Add friend\n \
             4.Contact details\n \
@@ -26,16 +29,22 @@ async def main(client : Client):
             name = await ainput("Write JID\n-> ")
             client.set_im(name)
             is_session_active = True
+            client.notify_status(name, 'active')
             while is_session_active:
+                client.notify_status(name, 'composing')
                 msg = await ainput("-->")
+                client.notify_status(name, 'paused')
                 if msg != '\q' and len(msg)>0:
                     client.send_message(
                         mto=name,
                         mbody=msg,
-                        mtype='chat'
+                        mtype='chat' 
                     )
-                else:
+                elif msg == '\q':
+                    client.notify_status(name, 'gone')
                     is_session_active = False
+                else:
+                    pass
         elif opt == 2:
             await client.my_roster()
         elif opt == 3:
@@ -75,6 +84,7 @@ async def main(client : Client):
         else:
             pass
 
+
 if __name__ == "__main__":
     
     # logging.basicConfig(level=logging.DEBUG,
@@ -84,7 +94,7 @@ if __name__ == "__main__":
         #TODO: manage input for registration or authentication
         client = Client("reg1@alumchat.xyz", "12345")
         print("Conectando ....")
-        client.connect()
+        client.connect() 
         client.loop.run_until_complete(client.connected_event.wait())
         client.loop.create_task(main(client))
         client.process(forever=False)

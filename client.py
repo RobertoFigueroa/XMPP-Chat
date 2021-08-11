@@ -17,6 +17,8 @@ class Client(slixmpp.ClientXMPP):
         self.im = None
         self.nick = jid.split('@')[0]
         self.room = None
+        self.last_msg = None
+        
         
         self.received = set()
         
@@ -30,6 +32,9 @@ class Client(slixmpp.ClientXMPP):
         self.add_event_handler("groupchat_message", self.muc_message)
         self.add_event_handler("muc::%s::got_online" % self.room,
                                self.muc_online)
+        self.add_event_handler('chatstate_composing', self.is_composing)
+        self.add_event_handler('chatstate_paused', self.is_paused)
+        self.add_event_handler('chatstate_gone', self.is_gone)
 
 
         self.register_plugin('xep_0030') # Service Discovery
@@ -37,6 +42,8 @@ class Client(slixmpp.ClientXMPP):
         self.register_plugin('xep_0004') # Data Forms
         self.register_plugin('xep_0060') # PubSub
         self.register_plugin('xep_0199') # Ping
+        self.register_plugin('xep_0085') # For chat state
+
 
         if is_new:
             self.register_plugin('xep_0004') # Data forms
@@ -189,6 +196,25 @@ class Client(slixmpp.ClientXMPP):
     def join_room(self):
         self.plugin['xep_0045'].join_muc(self.room,
                                          self.nick)
+
+    async def is_composing(self, event):
+        await aprint("Writing ...")
+
+    async def is_paused(self, event):
+        await aprint("Stop writing")
+    
+    async def is_gone(self, event):
+        await aprint("Gone ... ")
+
+    def notify_status(self, mto, status):
+        status_msg = self.make_message(
+            mto=mto,
+            mfrom=self.boundjid,
+            mtype='chat'
+        )
+
+        status_msg['chat_state'] = status
+        status_msg.send()
 
 if __name__ == "__main__":
     optp = OptionParser()
