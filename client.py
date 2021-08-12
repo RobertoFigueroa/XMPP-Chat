@@ -45,9 +45,9 @@ class Client(slixmpp.ClientXMPP):
         self.register_plugin('xep_0199') # Ping
         self.register_plugin('xep_0085') # For chat state
         self.register_plugin('xep_0065') # SOCKS5 Bytestreams
-        self.register_plugin('xep_0095') # SOCKS5 Bytestreams
-        self.register_plugin('xep_0096') # SOCKS5 Bytestreams
-        self.register_plugin('xep_0047') # In-band send file
+        #self.register_plugin('xep_0095') # SOCKS5 Bytestreams
+        #self.register_plugin('xep_0096') # SOCKS5 Bytestreams
+        #self.register_plugin('xep_0047') # In-band send file
 
         if is_new:
             self.register_plugin('xep_0004') # Data forms
@@ -224,38 +224,20 @@ class Client(slixmpp.ClientXMPP):
         self.file = open(filename, 'rb')
     
     async def send_file(self, to):
-        sid = self.new_id()
-        iq_ibb = self.make_iq_set(
-            ito=to, 
-            ifrom=self.boundjid)
-        iq_ibb['ibb_open']['block_size'] = 4096
-        iq_ibb['ibb_open']['sid'] = sid
+        proxy = await self['xep_0065'].handshake(to, self.boundjid)
         try:
-            await iq_ibb.send()
-            seq = 0
             while True:
-                data = self.file.read(4096)
+                data = self.file.read(1048576)
                 if not data:
                     break
-                msg_file = self.make_message(
-                    mto=to,
-                    mfrom=self.boundjid)
-                msg_file['ibb_data']['sid'] = sid
-                msg_file['ibb_data']['seq'] = seq
-                msg_file['ibb_data']['data'] = data
-                seq += 1
-                msg_file.send()
+                await proxy.write(data)
+            proxy.transport.write_eof()
         except (IqError, IqTimeout):
             await aprint('File transfer failed')
         else:
             await aprint('File transfer success')
         finally:
-            ibb_close = self.make_iq_set(
-                ito=to,
-                ifrom=self.boundjid
-            )
-            ibb_close['ibb_close']['sid'] = sid
-            await ibb_close.send()
+            self.file.close()
 
 if __name__ == "__main__":
     optp = OptionParser()
