@@ -47,11 +47,12 @@ class Client(slixmpp.ClientXMPP):
         self.register_plugin('xep_0363')
         self.register_plugin('xep_0054') # for vmCard (profile)
         self.register_plugin('xep_0082') # for vmCard (profile)
-        self.register_plugin('xep_0077') # In-band Registration        
 
-
+        if is_removing:
+            self.register_plugin('xep_0077') # In-band Registration        
 
         if is_new:
+            self.register_plugin('xep_0077') # In-band Registration        
             self.register_plugin('xep_0004') # Data forms
             self.register_plugin('xep_0066') # Out-of-band Data
             self['xep_0077'].force_registration = True
