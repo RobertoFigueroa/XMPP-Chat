@@ -13,3 +13,4 @@ S:
         <item jid="friend@example.com" subscription="both" />
     </query>
 </iq>
+
