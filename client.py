@@ -1,19 +1,15 @@
-from os import EX_PROTOCOL, sendfile
-import sys
 import asyncio
 import logging
-import getpass
-from optparse import OptionParser
-import threading
 from aioconsole import aprint
 
 import slixmpp
 from slixmpp.exceptions import IqError, IqTimeout
 import xml.etree.ElementTree as ET
 class Client(slixmpp.ClientXMPP):
-    def __init__(self, jid, password, is_new=False):
+    def __init__(self, jid, password, is_new=False, is_removing=False):
         super().__init__(jid, password)
 
+        self.removing = is_removing
         self.im = None
         self.nick = jid.split('@')[0]
         self.room = None
@@ -36,6 +32,7 @@ class Client(slixmpp.ClientXMPP):
         self.add_event_handler('chatstate_composing', self.is_composing)
         self.add_event_handler('chatstate_paused', self.is_paused)
         self.add_event_handler('chatstate_gone', self.is_gone)
+        self.add_event_handler('si_request', self.request_transfer)
 
 
         self.register_plugin('xep_0030') # Service Discovery
@@ -44,15 +41,19 @@ class Client(slixmpp.ClientXMPP):
         self.register_plugin('xep_0060') # PubSub
         self.register_plugin('xep_0199') # Ping
         self.register_plugin('xep_0085') # For chat state
-        self.register_plugin('xep_0065') # SOCKS5 Bytestreams
-        #self.register_plugin('xep_0095') # SOCKS5 Bytestreams
-        #self.register_plugin('xep_0096') # SOCKS5 Bytestreams
-        #self.register_plugin('xep_0047') # In-band send file
+        self.register_plugin('xep_0066')
+        self.register_plugin('xep_0071')
+        self.register_plugin('xep_0128')
+        self.register_plugin('xep_0363')
+        self.register_plugin('xep_0054') # for vmCard (profile)
+        self.register_plugin('xep_0082') # for vmCard (profile)
+        self.register_plugin('xep_0077') # In-band Registration        
+
+
 
         if is_new:
             self.register_plugin('xep_0004') # Data forms
             self.register_plugin('xep_0066') # Out-of-band Data
-            self.register_plugin('xep_0077') # In-band Registration        
             self['xep_0077'].force_registration = True
 
     def set_im(self, jid):
@@ -112,31 +113,51 @@ class Client(slixmpp.ClientXMPP):
         # resp['query'][''] 
         
     async def register(self, iq):
-        resp = self.Iq()
-        resp['type'] = 'set'
-        resp['register']['username'] = self.boundjid.user
-        resp['register']['password'] = self.password
+        if not self.removing:
+            resp = self.Iq()
+            resp['type'] = 'set'
+            resp['register']['username'] = self.boundjid.user
+            resp['register']['password'] = self.password
 
-        try:
-            await resp.send()
-            logging.info("Account created for %s!" % self.boundjid)
-        except IqError as e:
-            logging.error("Could not register account: %s" %
-                    e.iq['error']['text'])
-            self.disconnect()
-        except IqTimeout:
-            logging.error("No response from server.")
-            self.disconnect()
+            try:
+                await resp.send()
+                logging.info("Account created for %s!" % self.boundjid)
+            except IqError as e:
+                logging.error("Could not register account: %s" %
+                        e.iq['error']['text'])
+                self.disconnect()
+            except IqTimeout:
+                logging.error("No response from server.")
+                self.disconnect()
 
     async def start(self, event):
-        try:
-            self.send_presence(pstatus="hola khe aze") #<presence />
-            await self.get_roster() #IQ stanza for retrieve, response is saved by internal handler (self.roster)
-            self.connected_event.set()
-        except IqError as err:
-            print('Error: %s' % err.iq['error']['condition'])
-        except IqTimeout:
-            print('Error: Request timed out')
+        if self.removing:
+            resp = self.Iq()
+            resp['type'] = 'set'
+            resp['username'] = self.boundjid.user
+            resp['password'] = self.password
+            resp['register']['remove'] = 'remove'   
+            try:
+                await resp.send()
+                logging.info("Account removed for jid %s!" % self.boundjid)
+            except IqError as e:
+                logging.error("Could not remove account: %s" %
+                        e.iq['error']['text'])
+                self.disconnect()
+            except IqTimeout:
+                logging.error("No response from server.")
+                self.disconnect()
+            finally:
+                self.disconnect()
+        else:
+            try:
+                self.send_presence() #<presence />
+                await self.get_roster() #IQ stanza for retrieve, response is saved by internal handler (self.roster)
+                self.connected_event.set()
+            except IqError as err:
+                print('Error: %s' % err.iq['error']['condition'])
+            except IqTimeout:
+                print('Error: Request timed out')
 
     async def message(self, msg):
         if msg['type'] in ('normal', 'chat'):
@@ -221,54 +242,60 @@ class Client(slixmpp.ClientXMPP):
         status_msg.send()
 
     def open_file(self, filename):
-        self.file = open(filename, 'rb')
+        self.file = filename
     
     async def send_file(self, to):
-        proxy = await self['xep_0065'].handshake(to, self.boundjid)
         try:
-            while True:
-                data = self.file.read(1048576)
-                if not data:
-                    break
-                await proxy.write(data)
-            proxy.transport.write_eof()
+            url = await self.plugin['xep_0363'].upload_file(
+                self.file,
+                domain='alumchat.xyz',
+                timeout=10
+            )
+         
         except (IqError, IqTimeout):
             await aprint('File transfer failed')
-        else:
-            await aprint('File transfer success')
-        finally:
-            self.file.close()
+        html = (
+            f'<body xmlns="http://www.w3.org/1999/xhtml">'
+            f'<a href="{url}">{url}</a></body>'
+        )
+        message = self.make_message(mto=to, mbody=url, mhtml=html)
+        message['oob']['url'] = url
+        message.send()
 
-if __name__ == "__main__":
-    optp = OptionParser()
+    async def request_transfer(self, event):
+        resp = self.make_iq_result(
+            id=event['id'],
+            ito=event['from'],
+            ifrom=self.boundjid
+        )
+        try:
+            await resp.send()
+        except (IqError, IqTimeout):
+            await aprint("Error")
+        
 
-    optp.add_option('-d', '--debug', help='set loggin to DEBUG',
-                    action='store_const', dest='loglevel',
-                    const=logging.DEBUG, default=logging.INFO)
-    optp.add_option("-j", "--jid", dest="jid",
-                    help="JID to use")
-    optp.add_option("-p", "--password", dest="password",
-                    help="password to use")
-
-    opts, args = optp.parse_args()
-
-    if opts.jid is None:
-        opts.jid = input("Username: ")
-    if opts.password is None:
-        opts.password = getpass.getpass("Password: ")
+    async def view_profile(self, jid):
+        # query = self.make_iq_get(
+        #     ito=jid,
+        #     ifrom=self.boundjid
+        # )
+        # query['vcard_temp']
+        # try:
+        #     query.send()
+        # except (IqError, IqTimeout):
+        #     await aprint('Error')
+        
+        self.plugin['xep_0054'].get_vcard(
+            jid,
+            self.boundjid,
+            callback=self.recieve_profile,
+            timeout_callback=10,
+            timeout=15,
+        )
     
-
-    logging.basicConfig(level=opts.loglevel,
-                        format='%(levelname)-8s %(message)s')
-
-
-
-    # ***
-    # service discovery and ping
-    # ***z
-    xmpp = Client(opts.jid, opts.password)
-    xmpp.register_plugin('xep_0030') # Service Discovery
-    xmpp.register_plugin('xep_0199') # Ping
-
-    xmpp.connect()
-    xmpp.process()
+    def recieve_profile(self, event):
+        print('*'*20)
+        print("jid:{}\nname:{}".format(
+            event['from'],
+            event['vcard_temp']['FN']))
+        print('*'*20)

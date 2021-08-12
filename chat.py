@@ -1,22 +1,16 @@
-import asyncio
 import logging
 import getpass
-import time
 from aioconsole.stream import aprint
-
-from slixmpp import clientxmpp
+from optparse import OptionParser
 
 from client import Client
 from aioconsole import ainput
-import xml.etree.ElementTree as ET
-
-msg = ''
 
 async def main(client : Client):
     global msg
     is_connected = True
     while is_connected:
-        print("-"*20) #TODO: consider save this message on a conf. file
+        print("-"*20) 
         print("\t\t1.Chat 1-2-1\n \
             2.Show roster\n \
             3.Add friend\n \
@@ -35,15 +29,22 @@ async def main(client : Client):
                 client.notify_status(name, 'composing')
                 msg = await ainput("-->")
                 client.notify_status(name, 'paused')
-                if msg != '\q' and len(msg)>0:
+                if (msg != '\q' and msg != 'file:') and len(msg)>0:
                     client.send_message(
                         mto=name,
                         mbody=msg,
                         mtype='chat' 
                     )
+                elif len(msg) == 0:
+                    client.notify_status(name, 'paused')
+                    
                 elif msg == '\q':
-                    client.notify_status(name, 'gone')
                     is_session_active = False
+                elif msg == 'file:':
+                    file_dir = await ainput("Write file directory\n-->")
+                    await aprint("Sending file ...")
+                    client.open_file(file_dir)
+                    await client.send_file(name)
                 else:
                     pass
         elif opt == 2:
@@ -57,7 +58,8 @@ async def main(client : Client):
             )
             print("Request sent!")
         elif opt == 4:
-            pass
+            jid = await ainput("Type JID:\n-->")
+            await client.view_profile(jid)
         elif opt == 5:
             room = await ainput("Write room name\n-->")
             client.room = room
@@ -65,15 +67,22 @@ async def main(client : Client):
             room_session = True
             while room_session:
                 msg = await ainput("-->")
-                if msg != '\q' and len(msg) > 0:
+                if msg != '\q' and msg != 'file:' and len(msg) > 0:
                     client.send_message(
                         mto=client.room,
                         mbody=msg,
                         mtype='groupchat',
                         mfrom=client.boundjid
                     )
-                else:
+                elif msg == '\q':
                     room_session = False
+                elif msg == 'file:':
+                    file_dir = await ainput("Write file directory\n-->")
+                    await aprint("Sending file ...")
+                    client.open_file(file_dir)
+                    await client.send_file(client.room)
+                else:
+                    pass
         elif opt == 6:
             status = await ainput("Write your presence\n-->")
             client.send_presence(pstatus=status)
@@ -91,19 +100,45 @@ async def main(client : Client):
 
 
 if __name__ == "__main__":
-    
-    logging.basicConfig(level=logging.DEBUG,
+
+    optp = OptionParser()
+
+    optp.add_option('-d', '--debug', help='set loggin to DEBUG',
+                    action='store_const', dest='loglevel',
+                    const=logging.DEBUG, default=logging.INFO)
+    optp.add_option("-j", "--jid", dest="jid",
+                    help="JID to use")
+    optp.add_option("-p", "--password", dest="password",
+                    help="password to use")
+    optp.add_option("-n", "--new", dest="is_new",
+                    help="is registering a new user", 
+                    action='store_const',
+                    const=True, default=False)
+    optp.add_option("-r", "--remove", dest="is_removing",
+                    help="remove given jid", action="store_const",
+                    const=True, default=False)
+
+    opts, args = optp.parse_args()
+
+    if opts.jid is None:
+        opts.jid = input("Username (JID): ")
+    if opts.password is None:
+        opts.password = getpass.getpass("Password: ")  
+
+    logging.basicConfig(level=opts.loglevel,
                         format='%(levelname)-8s %(message)s')
 
     try:
-        #TODO: manage input for registration or authentication
-        client = Client("reg1@alumchat.xyz", "12345")
+        client = Client(opts.jid, opts.password, opts.is_new, opts.is_removing)
+        if opts.is_new:
+            print("Registrando ...")
+        if opts.is_removing:
+            print("Requesting remove JID...")
         print("Conectando ....")
         client.connect() 
         client.loop.run_until_complete(client.connected_event.wait())
         client.loop.create_task(main(client))
         client.process(forever=False)
-        #loop = asyncio.get_running_loop()
     except Exception as e:
         print("Error:", e)
     finally:
