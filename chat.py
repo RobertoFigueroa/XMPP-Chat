@@ -2,6 +2,7 @@ import asyncio
 import logging
 import getpass
 import time
+from aioconsole.stream import aprint
 
 from slixmpp import clientxmpp
 
@@ -22,7 +23,7 @@ async def main(client : Client):
             4.Contact details\n \
             5.Room chat\n \
             6.Presence status\n \
-            7. Send notification\n \
+            7. Send file\n \
             8.Log out\n")
         opt = int( await ainput("Choose an option\n->"))
         if opt == 1:
@@ -77,7 +78,11 @@ async def main(client : Client):
             status = await ainput("Write your presence\n-->")
             client.send_presence(pstatus=status)
         elif opt == 7:
-            pass
+            jid = await ainput("Write JID\n-->")
+            file_dir = await ainput("Write file directory\n-->")
+            await aprint("Sending file ...")
+            client.open_file(file_dir)
+            await client.send_file(jid)
         elif opt == 8:
             is_connected = False
             client.disconnect(reason='Not available, bye')
@@ -87,8 +92,8 @@ async def main(client : Client):
 
 if __name__ == "__main__":
     
-    # logging.basicConfig(level=logging.DEBUG,
-    #                     format='%(levelname)-8s %(message)s')
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(levelname)-8s %(message)s')
 
     try:
         #TODO: manage input for registration or authentication
