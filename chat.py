@@ -39,6 +39,7 @@ async def main(client : Client):
                     client.notify_status(name, 'paused')
                     
                 elif msg == '\q':
+                    client.im = None
                     is_session_active = False
                 elif msg == 'file:':
                     file_dir = await ainput("Write file directory\n-->")
@@ -75,6 +76,7 @@ async def main(client : Client):
                         mfrom=client.boundjid
                     )
                 elif msg == '\q':
+                    client.room = None
                     room_session = False
                 elif msg == 'file:':
                     file_dir = await ainput("Write file directory\n-->")

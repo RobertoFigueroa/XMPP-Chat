@@ -223,10 +223,12 @@ class Client(slixmpp.ClientXMPP):
                                          self.nick)
 
     async def is_composing(self, event):
-        await aprint("Writing ...")
+        if self.im != None or self.room != None:
+            await aprint("Writing ...")
 
     async def is_paused(self, event):
-        await aprint("Stop writing")
+        if self.im != None or self.room != None:
+            await aprint("Stop writing")
     
     async def is_gone(self, event):
         await aprint("Gone ... ")
