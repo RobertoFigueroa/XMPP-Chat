@@ -1,7 +1,22 @@
 # XMPP-Chat
+
+<br />
+<p align="center">
+  <a href="https://github.com/RobertoFigueroa/XMPP-Chat#about-the-project">
+    <img src="xmpp.png" alt="Logo" width="80" height="80">
+  </a>
+
+  <h3 align="center">XMPP Chat Project</h3>
+
+  <p align="center">
+    Basic chat functionalities to understand XMPP and how network works!
+    <br />
+    </p>
+</p>
+
 <!-- TABLE OF CONTENTS -->
 <details open="open">
-  <summary><h2 style="display: inline-block">Table of Contents</h2></summary>
+ <summary>Table of Contents</summary>
   <ol>
     <li>
       <a href="#about-the-project">About The Project</a>
@@ -22,6 +37,8 @@
 ## About The Project
 
 This is a chat build over XMPP, which is a protocol based on XML stanzas. This is part of a project for CC3067 class.
+
+![chat](https://github.com/RobertoFigueroa/XMPP-Chat/blob/main/project.png?raw=true)
 
 ## Getting Started
 
