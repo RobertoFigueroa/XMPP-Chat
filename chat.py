@@ -6,6 +6,9 @@ from optparse import OptionParser
 from client import Client
 from aioconsole import ainput
 
+"""
+Function that manages UI
+"""
 async def main(client : Client):
     global msg
     is_connected = True
