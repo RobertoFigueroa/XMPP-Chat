@@ -1,7 +1,4 @@
 # XMPP-Chat
-XMPP project
-
-
 <!-- TABLE OF CONTENTS -->
 <details open="open">
   <summary><h2 style="display: inline-block">Table of Contents</h2></summary>
@@ -55,7 +52,7 @@ You also need a XMPP server running like Openfire.
 
 Click in the following link for a demo:
 
-[youtube](https://youtu.be/PPYTJ7g0ccQ)
+[See the video here 📹](https://youtu.be/PPYTJ7g0ccQ)
 
 ## Contact
 
