@@ -29,6 +29,7 @@
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
+    <li><a href="#implemented-features">Implemented features</a></li>
     <li><a href="#contact">Contact</a></li>
     <li><a href="#acknowledgements">Acknowledgements</a></li>
   </ol>
@@ -70,6 +71,30 @@ You also need a XMPP server running like Openfire.
 Click in the following link for a demo:
 
 [See the video here 📹](https://youtu.be/PPYTJ7g0ccQ)
+
+## Implemented features
+
+- [x] Sign in with an account
+
+- [x] Register a new account 
+
+- [x] Sign out with an account
+
+- [x] Delete the account
+
+- [x] Show roster
+
+- [x] Show contact details
+
+- [x] Add a user to contacts
+
+- [x] Chat 1 to 1
+
+- [x] Chat room conversations
+
+- [x] Set precence status
+
+- [x] Send and receive files
 
 ## Contact
 
